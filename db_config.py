@@ -5,5 +5,5 @@ def get_db_connection():
         host="localhost",
         user="root",       # default XAMPP user
         password="",       # leave blank unless you set one
-        database="ecoloop" # your DB name
+        database="ecoloop_db" # your DB name
     )
