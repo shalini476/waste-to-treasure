@@ -1,65 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="text-center mb-4">Dashboard</h2>
+<h2 class="text-center mb-4">Let's Share!</h2>
 
-<div class="row">
-    <!-- Waste Form -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow p-4">
-            <h5>Add Waste Item</h5>
-            <form method="POST" action="/add_waste">
-                <div class="mb-2">
-                    <label class="form-label">Category</label>
-                    <input type="text" class="form-control" name="category" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" name="description" rows="2" required></textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Quantity</label>
-                    <input type="text" class="form-control" name="quantity" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-control" name="location" required>
-                </div>
-                <button type="submit" class="btn btn-success w-100 mt-2">Add Waste</button>
-            </form>
+{% if user.role == 'giver' or user.role == 'both' %}
+<!-- Waste Form -->
+<div class="card shadow p-4 mb-4">
+    <h5>Add Waste Item</h5>
+    <form method="POST" action="/add_waste">
+        <div class="mb-2">
+            <label class="form-label">Category</label>
+            <input type="text" class="form-control" name="category" required>
         </div>
-    </div>
-
-    <!-- Need Form -->
-    <div class="col-md-6 mb-4">
-        <div class="card shadow p-4">
-            <h5>Add Needed Resource</h5>
-            <form method="POST" action="/add_need">
-                <div class="mb-2">
-                    <label class="form-label">Category</label>
-                    <input type="text" class="form-control" name="category" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" name="description" rows="2" required></textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Quantity</label>
-                    <input type="text" class="form-control" name="quantity" required>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-control" name="location" required>
-                </div>
-                <button type="submit" class="btn btn-success w-100 mt-2">Add Need</button>
-            </form>
+        <div class="mb-2">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="2" required></textarea>
         </div>
-    </div>
+        <div class="mb-2">
+            <label class="form-label">Quantity</label>
+            <input type="text" class="form-control" name="quantity" required>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-control" name="location" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100 mt-2">Add Waste</button>
+    </form>
 </div>
+{% endif %}
 
-<!-- AI Suggestions -->
+{% if user.role == 'receiver' or user.role == 'both' %}
+<!-- Need Form -->
+<div class="card shadow p-4 mb-4">
+    <h5>Add Needed Resource</h5>
+    <form method="POST" action="/add_need">
+        <div class="mb-2">
+            <label class="form-label">Category</label>
+            <input type="text" class="form-control" name="category" required>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="2" required></textarea>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Quantity</label>
+            <input type="text" class="form-control" name="quantity" required>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-control" name="location" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100 mt-2">Add Need</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Suggested Matches -->
 <div class="card shadow p-4">
-    <h5 class="mb-3">AI Suggested Matches</h5>
-    <button class="btn btn-outline-success mb-3" id="loadMatchesBtn">Load Suggestions</button>
+    <h5 class="mb-3">AI or Database Matches</h5>
+    <button class="btn btn-outline-success mb-3" id="loadMatchesBtn">Find Matches</button>
     <div id="matchesList" class="table-responsive"></div>
 </div>
 
@@ -70,33 +68,25 @@ document.getElementById("loadMatchesBtn").addEventListener("click", () => {
     .then(data => {
         const div = document.getElementById("matchesList");
         if (!data.length) {
-            div.innerHTML = "<p>No matches found yet. Try adding items!</p>";
+            div.innerHTML = "<p class='text-danger'>No exact matches found. Showing related items...</p>";
             return;
         }
         let html = `<table class="table table-bordered">
-            <thead><tr><th>Waste</th><th>Receiver Need</th><th>Score</th><th>Action</th></tr></thead><tbody>`;
+            <thead><tr><th>Waste</th><th>Receiver Need</th><th>Score</th></tr></thead><tbody>`;
         data.forEach(m => {
             html += `<tr>
                 <td>${m.waste_category} (${m.waste_location})</td>
                 <td>${m.need_category} (${m.need_location})</td>
                 <td>${m.score.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-sm btn-success me-1" onclick="logMatch(${m.waste_id},${m.need_id},1)">Accept</button>
-                    <button class="btn btn-sm btn-danger" onclick="logMatch(${m.waste_id},${m.need_id},0)">Reject</button>
-                </td>
             </tr>`;
         });
         html += "</tbody></table>";
         div.innerHTML = html;
+    })
+    .catch(() => {
+        document.getElementById("matchesList").innerHTML =
+            "<p class='text-warning'>No related matches available at this moment.</p>";
     });
 });
-
-function logMatch(waste_id, need_id, matched) {
-    fetch("/log_match", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({waste_id, need_id, matched})
-    }).then(r => r.json()).then(d => alert("Feedback logged!"));
-}
 </script>
 {% endblock %}

@@ -1,11 +1,87 @@
 {% extends "base.html" %}
 {% block content %}
+
 <div class="text-center py-5">
-    <h1 class="mb-3">Welcome to Waste → Treasure</h1>
-    <p class="lead">Transforming waste into valuable resources — connect givers and receivers through AI matching.</p>
+    <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+        <span class="block xl:inline">Where Waste</span>
+        <span class="block text-green-600 xl:inline"> Meets Purpose</span>
+    </h1>
+    <p class="lead text-gray-600 mt-3 text-lg md:text-xl">
+        EcoLoop intelligently connects businesses that have waste with those who see it as a resource.
+        Join the circular economy.
+    </p>
     <div class="mt-4">
         <a href="/register" class="btn btn-success btn-lg me-2">Get Started</a>
         <a href="/login" class="btn btn-outline-success btn-lg">Login</a>
     </div>
 </div>
+
+<!-- Scrolling Text Section -->
+<div class="mt-12 overflow-hidden bg-green-50 border-t-2 border-b-2 border-green-200 py-6">
+    <div class="scroll-text text-green-700 font-extrabold tracking-wide whitespace-nowrap uppercase">
+        🌿 Turning Waste into Opportunity ♻️  |  Building a Sustainable Tomorrow 🌎  |  Connecting Communities for a Cleaner Planet 🌱  |  
+        Empowering Circular Economy 💡  |  Together, We Transform Waste → Treasure 🌟
+    </div>
+</div>
+
+
+<!-- Image Row Section -->
+<div class="image-row mt-5 text-center">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
+      <img src="https://safety4sea.com/wp-content/uploads/2022/05/recycling-750x500.jpg" 
+           class="img-fluid rounded shadow" alt="Plastic Recycling">
+      <p class="caption mt-2">Declining U.S. Plastic Recycling Rate</p>
+    </div>
+    <div class="col-md-4">
+      <img src="https://homesteadandchill.com/wp-content/uploads/2019/10/beginners-guide-hobby-greenhouse-feature.jpeg" 
+           class="img-fluid rounded shadow" alt="Greenhouse Farming">
+      <p class="caption mt-2">Greenhouse Farming Foundation Course</p>
+    </div>
+    <div class="col-md-4">
+      <img src="https://media.gettyimages.com/id/1452807599/photo/man-using-leftover-organic-food-for-compost-avoiding-waste-and-recycling.jpg?s=2048x2048&w=gi&k=20&c=ISDuY9Y6LSwFb347LSt1z2R9vmbtr_TvWmjj3ktAM78=" 
+           class="img-fluid rounded shadow" alt="Food Composting">
+      <p class="caption mt-2">Composting Organic Food Waste</p>
+    </div>
+  </div>
+</div>
+
+
+<style>
+    /* Scrolling text animation */
+    .scroll-text {
+        display: inline-block;
+        white-space: nowrap;
+        animation: scroll-left 30s linear infinite;
+        font-size: 2rem; /* Increased size */
+        letter-spacing: 2px; /* Slight spacing for better readability */
+    }
+.image-row img {
+  height: 220px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 15px;
+}
+
+.caption {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+}
+
+    @keyframes scroll-left {
+        0% {
+            transform: translateX(100%);
+        }
+        100% {
+            transform: translateX(-100%);
+        }
+    }
+
+    /* Optional: pause on hover */
+    .scroll-text:hover {
+        animation-play-state: paused;
+    }
+</style>
+
 {% endblock %}
