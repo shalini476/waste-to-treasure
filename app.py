@@ -1,116 +1,120 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, session, jsonify
 from db_config import get_db_connection
-from sklearn.metrics.pairwise import euclidean_distances
-import pandas as pd
+import bcrypt
+import ai_matcher
 
 app = Flask(__name__)
+app.secret_key = "replace_with_a_random_secret"
 
-# Home Page
+# Helper: get user by email
+def get_user_by_email(email):
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM users WHERE email=%s", (email,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    return user
+
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
 
-# --------------------- USER LOGIN ---------------------
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-    email = data['email']
-    password = data['password']
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
-    user = cursor.fetchone()
-    conn.close()
-
-    if user:
-        return jsonify({"status": "success", "message": "Login successful!"})
-    else:
-        return jsonify({"status": "error", "message": "Invalid email or password."})
-
-
-# --------------------- REGISTER ---------------------
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET','POST'])
 def register():
-    data = request.json
-    name = data['name']
-    email = data['email']
-    password = data['password']
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        password = request.form['password'].encode('utf-8')
+        location = request.form['location']
+        role = request.form['role']
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        if get_user_by_email(email):
+            return "Email already exists", 400
 
-    try:
-        cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, password))
+        pw_hash = bcrypt.hashpw(password, bcrypt.gensalt()).decode('utf-8')
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO users (name,email,password_hash,location,role) VALUES (%s,%s,%s,%s,%s)",
+                    (name,email,pw_hash,location,role))
         conn.commit()
-        return jsonify({"status": "success", "message": "Registration successful!"})
-    except:
-        conn.rollback()
-        return jsonify({"status": "error", "message": "Email already exists."})
-    finally:
+        cur.close()
         conn.close()
+        return redirect('/login')
+    return render_template('register.html')
 
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password'].encode('utf-8')
+        user = get_user_by_email(email)
+        if user and bcrypt.checkpw(password, user['password_hash'].encode('utf-8')):
+            session['user_id'] = user['id']
+            return redirect('/dashboard')
+        return "Invalid credentials", 401
+    return render_template('login.html')
 
-# --------------------- PROVIDER FORM ---------------------
-@app.route('/provider', methods=['POST'])
-def provider():
-    data = request.json
-    waste_type = data['waste_type']
-    quantity = data['quantity']
-    location = data['location']
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('dashboard.html')
 
+# Add waste item
+@app.route('/add_waste', methods=['POST'])
+def add_waste():
+    if 'user_id' not in session:
+        return redirect('/login')
+    user_id = session['user_id']
+    data = request.form
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO waste_providers (waste_type, quantity, location) VALUES (%s, %s, %s)",
-                   (waste_type, quantity, location))
+    cur = conn.cursor()
+    cur.execute("INSERT INTO waste_items (user_id, category, description, quantity, location) VALUES (%s,%s,%s,%s,%s)",
+                (user_id, data['category'], data['description'], data['quantity'], data['location']))
     conn.commit()
+    cur.close()
     conn.close()
-    return jsonify({"status": "success", "message": "Waste provider data saved!"})
+    return redirect('/dashboard')
 
-
-# --------------------- RECEIVER FORM ---------------------
-@app.route('/receiver', methods=['POST'])
-def receiver():
-    data = request.json
-    resource_needed = data['resource_needed']
-    quantity = data['quantity']
-    location = data['location']
-
+# Add need item
+@app.route('/add_need', methods=['POST'])
+def add_need():
+    if 'user_id' not in session:
+        return redirect('/login')
+    user_id = session['user_id']
+    data = request.form
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO resource_receivers (resource_needed, quantity, location) VALUES (%s, %s, %s)",
-                   (resource_needed, quantity, location))
+    cur = conn.cursor()
+    cur.execute("INSERT INTO need_items (user_id, category, description, quantity, location) VALUES (%s,%s,%s,%s,%s)",
+                (user_id, data['category'], data['description'], data['quantity'], data['location']))
     conn.commit()
+    cur.close()
     conn.close()
-    return jsonify({"status": "success", "message": "Resource receiver data saved!"})
+    return redirect('/dashboard')
 
+# Endpoint to get AI-suggested matches (returns JSON)
+@app.route('/suggest_matches')
+def suggest_matches():
+    if 'user_id' not in session:
+        return jsonify({"error":"login required"}), 401
+    # ai_matcher will return a list of tuples or dicts
+    matches = ai_matcher.suggest_all_matches()
+    return jsonify(matches)
 
-# --------------------- AI MATCHING ENGINE ---------------------
-@app.route('/match', methods=['GET'])
-def match_resources():
+# Endpoint for logging whether a suggested match succeeded (label)
+@app.route('/log_match', methods=['POST'])
+def log_match():
+    data = request.json  # {waste_id, need_id, matched: 0/1}
     conn = get_db_connection()
-    provider_df = pd.read_sql("SELECT * FROM waste_providers", conn)
-    receiver_df = pd.read_sql("SELECT * FROM resource_receivers", conn)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO match_logs (waste_id, need_id, matched) VALUES (%s,%s,%s)",
+                (data['waste_id'], data['need_id'], data['matched']))
+    conn.commit()
+    cur.close()
     conn.close()
+    return jsonify({"status":"ok"})
 
-    if provider_df.empty or receiver_df.empty:
-        return jsonify({"status": "error", "message": "Not enough data for matching."})
-
-    # Simple AI-based Matching: match closest quantities (simulate optimization)
-    matches = []
-    for _, prov in provider_df.iterrows():
-        receiver_df['diff'] = abs(receiver_df['quantity'] - prov['quantity'])
-        best_match = receiver_df.sort_values(by='diff').iloc[0]
-        matches.append({
-            "provider": prov['waste_type'],
-            "provider_qty": prov['quantity'],
-            "receiver": best_match['resource_needed'],
-            "receiver_qty": best_match['quantity'],
-            "location": f"{prov['location']} → {best_match['location']}"
-        })
-
-    return jsonify({"status": "success", "matches": matches})
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

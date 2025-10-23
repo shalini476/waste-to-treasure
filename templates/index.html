@@ -1,52 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Project Symbiosis | EcoLoop</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <h1>🌱 Project Symbiosis: EcoLoop</h1>
-  
-  <div id="forms-container">
-    <section id="register">
-      <h2>Register</h2>
-      <input id="regName" placeholder="Name">
-      <input id="regEmail" placeholder="Email">
-      <input id="regPassword" type="password" placeholder="Password">
-      <button onclick="register()">Register</button>
-    </section>
-
-    <section id="login">
-      <h2>Login</h2>
-      <input id="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Password">
-      <button onclick="login()">Login</button>
-    </section>
-
-    <section id="provider">
-      <h2>Waste Provider</h2>
-      <input id="wasteType" placeholder="Waste Type">
-      <input id="wasteQty" placeholder="Quantity (kg)">
-      <input id="wasteLoc" placeholder="Location">
-      <button onclick="submitProvider()">Submit</button>
-    </section>
-
-    <section id="receiver">
-      <h2>Resource Receiver</h2>
-      <input id="resType" placeholder="Resource Needed">
-      <input id="resQty" placeholder="Quantity (kg)">
-      <input id="resLoc" placeholder="Location">
-      <button onclick="submitReceiver()">Submit</button>
-    </section>
-
-    <section id="match">
-      <h2>AI Match Finder</h2>
-      <button onclick="findMatch()">Find Matches</button>
-      <pre id="matchResults"></pre>
-    </section>
-  </div>
-
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="mb-3">Welcome to Waste → Treasure</h1>
+    <p class="lead">Transforming waste into valuable resources — connect givers and receivers through AI matching.</p>
+    <div class="mt-4">
+        <a href="/register" class="btn btn-success btn-lg me-2">Get Started</a>
+        <a href="/login" class="btn btn-outline-success btn-lg">Login</a>
+    </div>
+</div>
+{% endblock %}

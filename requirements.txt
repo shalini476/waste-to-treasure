@@ -1,0 +1,7 @@
+flask
+mysql-connector-python
+pandas
+scikit-learn
+joblib
+bcrypt
+sentence-transformers      # optional, only if using embeddings
