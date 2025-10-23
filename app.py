@@ -134,54 +134,46 @@ def add_need():
 @app.route('/suggest_matches')
 def suggest_matches():
     if 'user_id' not in session:
-        return jsonify([])
+        return jsonify({"error": "login required"}), 401
 
     user_id = session['user_id']
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
     cur.execute("SELECT role FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
-
-    if not user:
-        return jsonify([])
-
-    # Database-based matching
-    if user['role'] == 'giver':
-        query = """
-        SELECT w.id AS waste_id, n.id AS need_id, w.category AS waste_category, 
-               n.category AS need_category, w.location AS waste_location, 
-               n.location AS need_location,
-               (w.category = n.category) AS score
-        FROM waste_items w
-        JOIN need_items n ON w.category = n.category
-        WHERE w.user_id = %s
-        """
-        cur.execute(query, (user_id,))
-    elif user['role'] == 'receiver':
-        query = """
-        SELECT w.id AS waste_id, n.id AS need_id, w.category AS waste_category, 
-               n.category AS need_category, w.location AS waste_location, 
-               n.location AS need_location,
-               (w.category = n.category) AS score
-        FROM need_items n
-        JOIN waste_items w ON w.category = n.category
-        WHERE n.user_id = %s
-        """
-        cur.execute(query, (user_id,))
-    else:
-        cur.execute("""
-        SELECT w.id AS waste_id, n.id AS need_id, w.category AS waste_category, 
-               n.category AS need_category, w.location AS waste_location, 
-               n.location AS need_location,
-               (w.category = n.category) AS score
-        FROM waste_items w
-        JOIN need_items n ON w.category = n.category
-        """)
-
-    matches = cur.fetchall()
     cur.close()
     conn.close()
+
+    # Use AI-based matching
+    matches = ai_matcher.suggest_all_matches()
+
+    # Filter matches for user's role
+    if user['role'] == 'giver':
+        matches = [m for m in matches if m['waste_id'] in get_user_waste_ids(user_id)]
+    elif user['role'] == 'receiver':
+        matches = [m for m in matches if m['need_id'] in get_user_need_ids(user_id)]
+
     return jsonify(matches)
+
+
+# Helper functions
+def get_user_waste_ids(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM waste_items WHERE user_id=%s", (user_id,))
+    ids = [r[0] for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return ids
+
+def get_user_need_ids(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM need_items WHERE user_id=%s", (user_id,))
+    ids = [r[0] for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return ids
 
 
 # ---------------- Log match feedback ----------------

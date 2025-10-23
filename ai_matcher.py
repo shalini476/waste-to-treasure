@@ -1,46 +1,59 @@
-import joblib
-import pandas as pd
-from db_config import get_db_connection
+# ai_matcher.py
+from sentence_transformers import SentenceTransformer, util
+import mysql.connector
 
-MODEL_PATH = "models/ai_model.pkl"
+# Load semantic model once (small + fast)
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-def load_model():
-    data = joblib.load(MODEL_PATH)
-    return data['model'], data['vectorizer']
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",  # update if needed
+        database="waste_to_treasure"
+    )
 
-def suggest_all_matches(top_k=5):
-    model, vectorizer = load_model()
+def suggest_all_matches():
     conn = get_db_connection()
-    wastes = pd.read_sql("SELECT * FROM waste_items", conn)
-    needs = pd.read_sql("SELECT * FROM need_items", conn)
+    cur = conn.cursor(dictionary=True)
+
+    # Fetch data
+    cur.execute("SELECT * FROM waste_items")
+    wastes = cur.fetchall()
+
+    cur.execute("SELECT * FROM need_items")
+    needs = cur.fetchall()
 
     results = []
-    for _, w in wastes.iterrows():
-        # candidate needs - filter by same city first (fast)
-        candidates = needs[needs['location'].str.lower() == w['location'].lower()]
-        if candidates.empty:
-            candidates = needs  # fallback
 
-        # prepare combined texts
-        texts = (w['category'].astype(str) + " " + w['description'].astype(str) + " " + candidates['category'].astype(str) + " " + candidates['description'].astype(str)).tolist()
-        X = vectorizer.transform(texts)
-        probs = model.predict_proba(X)[:,1]  # probability of matched==1
-        candidates = candidates.copy()
-        candidates['score'] = probs
-        top = candidates.sort_values('score', ascending=False).head(top_k)
-        for _, row in top.iterrows():
+    for w in wastes:
+        w_text = f"{w['category']} {w['description']}"
+        w_emb = model.encode(w_text, convert_to_tensor=True)
+
+        best_match = None
+        best_score = 0.0
+
+        for n in needs:
+            n_text = f"{n['category']} {n['description']}"
+            n_emb = model.encode(n_text, convert_to_tensor=True)
+
+            score = util.cos_sim(w_emb, n_emb).item()
+
+            if score > best_score:
+                best_score = score
+                best_match = n
+
+        if best_match:
             results.append({
-                'waste_id': int(w['id']),
-                'need_id': int(row['id']),
-                'score': float(row['score']),
-                'waste_category': w['category'],
-                'need_category': row['category'],
-                'waste_location': w['location'],
-                'need_location': row['location']
+                "waste_id": w['id'],
+                "need_id": best_match['id'],
+                "waste_category": w['category'],
+                "need_category": best_match['category'],
+                "waste_location": w['location'],
+                "need_location": best_match['location'],
+                "score": round(best_score, 2)
             })
+
+    cur.close()
     conn.close()
     return results
-
-if __name__ == "__main__":
-    matches = suggest_all_matches()
-    print(matches[:10])

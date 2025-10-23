@@ -1,92 +1,108 @@
 {% extends "base.html" %}
 {% block content %}
-<h2 class="text-center mb-4">Let's Share!</h2>
+<div class="container mt-4">
 
-{% if user.role == 'giver' or user.role == 'both' %}
-<!-- Waste Form -->
-<div class="card shadow p-4 mb-4">
-    <h5>Add Waste Item</h5>
-    <form method="POST" action="/add_waste">
-        <div class="mb-2">
-            <label class="form-label">Category</label>
-            <input type="text" class="form-control" name="category" required>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" name="description" rows="2" required></textarea>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Quantity</label>
-            <input type="text" class="form-control" name="quantity" required>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Location</label>
-            <input type="text" class="form-control" name="location" required>
-        </div>
-        <button type="submit" class="btn btn-success w-100 mt-2">Add Waste</button>
-    </form>
-</div>
-{% endif %}
+  <!-- Waste Form (for giver) -->
+  {% if session['role'] == 'giver' %}
+  <h3>Add Waste Item</h3>
+  <form id="wasteForm">
+    <input type="text" class="form-control mb-2" name="category" placeholder="Category" required>
+    <input type="text" class="form-control mb-2" name="description" placeholder="Description" required>
+    <input type="text" class="form-control mb-2" name="quantity" placeholder="Quantity" required>
+    <input type="text" class="form-control mb-2" name="location" placeholder="Location" required>
+    <button type="submit" class="btn btn-success">Add Waste</button>
+  </form>
+  {% endif %}
 
-{% if user.role == 'receiver' or user.role == 'both' %}
-<!-- Need Form -->
-<div class="card shadow p-4 mb-4">
-    <h5>Add Needed Resource</h5>
-    <form method="POST" action="/add_need">
-        <div class="mb-2">
-            <label class="form-label">Category</label>
-            <input type="text" class="form-control" name="category" required>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" name="description" rows="2" required></textarea>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Quantity</label>
-            <input type="text" class="form-control" name="quantity" required>
-        </div>
-        <div class="mb-2">
-            <label class="form-label">Location</label>
-            <input type="text" class="form-control" name="location" required>
-        </div>
-        <button type="submit" class="btn btn-success w-100 mt-2">Add Need</button>
-    </form>
-</div>
-{% endif %}
+  <!-- Need Form (for receiver) -->
+  {% if session['role'] == 'receiver' %}
+  <h3>Add Need Item</h3>
+  <form id="needForm">
+    <input type="text" class="form-control mb-2" name="category" placeholder="Category" required>
+    <input type="text" class="form-control mb-2" name="description" placeholder="Description" required>
+    <input type="text" class="form-control mb-2" name="quantity" placeholder="Quantity" required>
+    <input type="text" class="form-control mb-2" name="location" placeholder="Location" required>
+    <button type="submit" class="btn btn-primary">Add Need</button>
+  </form>
+  {% endif %}
 
-<!-- Suggested Matches -->
-<div class="card shadow p-4">
-    <h5 class="mb-3">AI or Database Matches</h5>
-    <button class="btn btn-outline-success mb-3" id="loadMatchesBtn">Find Matches</button>
-    <div id="matchesList" class="table-responsive"></div>
+  <!-- Section for AI Matches -->
+  <div id="matchesSection" class="mt-5">
+    <h4>🔍 AI Suggested Matches</h4>
+    <div id="matchesContainer" class="table-responsive"></div>
+  </div>
 </div>
 
 <script>
-document.getElementById("loadMatchesBtn").addEventListener("click", () => {
-    fetch("/suggest_matches")
-    .then(r => r.json())
-    .then(data => {
-        const div = document.getElementById("matchesList");
-        if (!data.length) {
-            div.innerHTML = "<p class='text-danger'>No exact matches found. Showing related items...</p>";
-            return;
-        }
-        let html = `<table class="table table-bordered">
-            <thead><tr><th>Waste</th><th>Receiver Need</th><th>Score</th></tr></thead><tbody>`;
-        data.forEach(m => {
-            html += `<tr>
-                <td>${m.waste_category} (${m.waste_location})</td>
-                <td>${m.need_category} (${m.need_location})</td>
-                <td>${m.score.toFixed(2)}</td>
-            </tr>`;
-        });
-        html += "</tbody></table>";
-        div.innerHTML = html;
-    })
-    .catch(() => {
-        document.getElementById("matchesList").innerHTML =
-            "<p class='text-warning'>No related matches available at this moment.</p>";
+document.addEventListener('DOMContentLoaded', function() {
+
+  // Function to load matches from backend
+  async function loadAIMatches() {
+    const response = await fetch('/suggest_matches');
+    const data = await response.json();
+
+    const container = document.getElementById('matchesContainer');
+    container.innerHTML = '';
+
+    if (!data.length) {
+      container.innerHTML = "<p class='text-muted'>No matches found yet. Add more data!</p>";
+      return;
+    }
+
+    let html = `
+      <table class="table table-bordered table-striped mt-3">
+        <thead class="table-light">
+          <tr>
+            <th>Waste Category</th>
+            <th>Need Category</th>
+            <th>Waste Location</th>
+            <th>Need Location</th>
+            <th>Match Score</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    data.forEach(row => {
+      html += `
+        <tr>
+          <td>${row.waste_category}</td>
+          <td>${row.need_category}</td>
+          <td>${row.waste_location}</td>
+          <td>${row.need_location}</td>
+          <td>${row.score}</td>
+        </tr>`;
     });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+  }
+
+  // Handle form submissions dynamically
+  const wasteForm = document.getElementById('wasteForm');
+  const needForm = document.getElementById('needForm');
+
+  if (wasteForm) {
+    wasteForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(wasteForm);
+      await fetch('/add_waste', { method: 'POST', body: formData });
+      wasteForm.reset();
+      await loadAIMatches();  // Load matches immediately
+    });
+  }
+
+  if (needForm) {
+    needForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(needForm);
+      await fetch('/add_need', { method: 'POST', body: formData });
+      needForm.reset();
+      await loadAIMatches();  // Load matches immediately
+    });
+  }
+
+  // Also load matches when page opens
+  loadAIMatches();
 });
 </script>
+
 {% endblock %}

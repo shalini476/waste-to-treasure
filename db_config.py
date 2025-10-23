@@ -1,10 +1,10 @@
 import mysql.connector
-from mysql.connector import Error
 
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
-        user="root",
-        password="",          # update if you set password in XAMPP
-        database="waste_to_treasure"
+        user="root",              # default for XAMPP
+        password="",              # empty password in most XAMPP installs
+        database="waste_to_treasure",
+        port=3306                 # update if your MySQL uses 3307 or 3308
     )
