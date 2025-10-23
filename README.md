@@ -1,5 +1,1 @@
-**Waste to Treasure** ♻️ is an AI-powered web app that connects **waste givers** and **resource receivers**.
-It uses the **SentenceTransformer (all-MiniLM-L6-v2)** model to match waste and need descriptions intelligently.
-Built with **Flask**, **MySQL**, and **Bootstrap**, it provides secure login and role-based dashboards.
-All matches and feedback are stored in a structured MySQL database for continuous AI improvement.
-The project promotes sustainability by turning waste into valuable resources.
+**Waste to Treasure** ♻️ is an AI-powered web app that connects **waste givers** and **resource receivers**. It uses the **SentenceTransformer (all-MiniLM-L6-v2)** model to match waste and need descriptions intelligently. Built with **Flask**, **MySQL**, and **Bootstrap**, it provides secure login and role-based dashboards. All matches and feedback are stored in a structured MySQL database for continuous AI improvement. The project promotes sustainability by turning waste into valuable resources.
